@@ -87,3 +87,16 @@ def test_official_train_and_test_events_are_disjoint_by_content():
         d = d.sort_values(["event_id", "time_to_tca"], ascending=[True, False]).groupby("event_id").head(1)
         return set(map(tuple, d.drop(columns=["event_id", "c_object_type"]).round(6).astype(str).to_numpy()))
     assert not first(k.load("train_data")) & first(k.load("test_data"))
+
+
+def test_rules_promote_and_demote():
+    import tune
+    X = pd.DataFrame({"last_risk": [-5.0, -6.05, -6.2, -5.0, -5.0, -5.0],
+                      "object_type": ["DEBRIS", "DEBRIS", "DEBRIS", "PAYLOAD", "DEBRIS", "DEBRIS"],
+                      "last_t_span": [5.0, 5.0, 5.0, 5.0, 0.3, 5.0],
+                      "last_miss_distance": [100.0, 100.0, 100.0, 100.0, 100.0, 40000.0]})
+    f = tune.flag_combo(X, None, X, promote=0.1, payload=True, span=0.5, miss=30000)
+    assert f.tolist() == [True, True, False, False, False, False]
+    notes = train.rule_notes(X)
+    flagged_words = ("above the line", "within 0.1")
+    assert [any(w in n for w in flagged_words) for n in notes] == f.tolist()

@@ -2,7 +2,7 @@
 
 Every run is a test peek and is logged, so the number of peeks is visible. Candidates were chosen
 on train-only validation (tune.py, results/validation.csv) before this script was run.
-Usage: python evaluate_official.py <candidate>
+Usage: python evaluate_official.py <candidate>  |  python evaluate_official.py --bootstrap <candidate>
 """
 import datetime
 import pathlib
@@ -39,5 +39,29 @@ def main(name: str) -> None:
     print(row)
 
 
+
+
+def bootstrap(name: str, n: int = 2000) -> None:
+    """Paired bootstrap over test events of L(candidate) - L(latest rule), for an already-logged
+    candidate. Re-uses the same frozen predictions; nothing is fitted or chosen here."""
+    X, y, Xt, yt, _ = T.prepare()
+    ours = np.where(flags(name, X, y, Xt), np.maximum(Xt.last_risk.to_numpy(), k.HIGH), k.CLIP)
+    base = k.clip(Xt.last_risk.to_numpy())
+    rng = np.random.default_rng(T.SEED)
+    d = []
+    for _ in range(n):
+        i = rng.integers(0, len(yt), len(yt))
+        d.append(k.score(yt[i], ours[i])["L"] - k.score(yt[i], base[i])["L"])
+    d = np.array(d)
+    out = pd.DataFrame([{"candidate": name, "resamples": n, "delta_L_mean": d.mean(),
+                         "delta_L_p2.5": np.percentile(d, 2.5), "delta_L_p97.5": np.percentile(d, 97.5),
+                         "share_better": (d < 0).mean()}])
+    out.to_csv(LOG.parent / "official_bootstrap.csv", index=False, float_format="%.4f")
+    print(out.to_string(index=False))
+
+
 if __name__ == "__main__":
-    main(sys.argv[1])
+    if sys.argv[1] == "--bootstrap":
+        bootstrap(sys.argv[2])
+    else:
+        main(sys.argv[1])
