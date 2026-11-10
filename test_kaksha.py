@@ -97,6 +97,3 @@ def test_rules_promote_and_demote():
                       "last_miss_distance": [100.0, 100.0, 100.0, 100.0, 100.0, 40000.0]})
     f = tune.flag_combo(X, None, X, promote=0.1, payload=True, span=0.5, miss=30000)
     assert f.tolist() == [True, True, False, False, False, False]
-    notes = train.rule_notes(X)
-    flagged_words = ("above the line", "within 0.1")
-    assert [any(w in n for w in flagged_words) for n in notes] == f.tolist()

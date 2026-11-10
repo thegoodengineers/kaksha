@@ -14,17 +14,18 @@ All rows: ESA's 2,167 held-out test events, 150 of them high risk (final log10 P
 | official   | baseline: highest risk so far | 0.946 |    0.560 | 0.592 |                 24 |              0.840 |                      339 |              0.168 |
 | shifted    | baseline: highest risk so far | 0.946 |    0.560 | 0.592 |                 24 |              0.840 |                      339 |              0.168 |
 | official   | LightGBM gate                 | 0.849 |    0.613 | 0.722 |                 38 |              0.747 |                       64 |              0.032 |
+| official   | rules: clean                  | 1.021 |    0.705 | 0.691 |                 45 |              0.700 |                       55 |              0.027 |
 | official   | rules: rules                  | 0.676 |    0.497 | 0.736 |                 35 |              0.767 |                       66 |              0.033 |
 | official   | rules: rules+gbm_promote      | 0.691 |    0.497 | 0.720 |                 39 |              0.740 |                       60 |              0.030 |
 | shifted    | LightGBM gate                 | 0.674 |    0.518 | 0.768 |                 23 |              0.847 |                      100 |              0.050 |
 
-## Official split: is the win real?
+`rules: clean` is the headline official result: chosen only by train 5-fold CV (`results/cv_selection.csv`). `rules: rules` and `rules: rules+gbm_promote` were chosen after about 60 unlogged exploratory test scorings and are not counted.
 
-Paired bootstrap over test events of L(rules) - L(latest-risk rule), same frozen predictions:
+## Official split: paired bootstrap of L(clean pick) - L(latest-risk rule)
 
 | candidate   |   resamples |   delta_L_mean |   delta_L_p2.5 |   delta_L_p97.5 |   share_better |
 |:------------|------------:|---------------:|---------------:|----------------:|---------------:|
-| rules       |        2000 |         -0.018 |         -0.075 |           0.026 |          0.750 |
+| clean       |        2000 |          0.331 |          0.050 |           0.705 |          0.006 |
 
 ## Every official-test evaluation we ran (`results/test_log.csv`)
 
@@ -34,21 +35,22 @@ Paired bootstrap over test events of L(rules) - L(latest-risk rule), same frozen
 | 2026-11-10 | a614bf7  | train.py official model (first release) | LightGBM P(high) gate, isotonic, F2 line on train OOF                                                                                                                                                                    | 0.849 |    0.613 | 0.722 |             38.000 |                   64.000 |
 | 2026-11-10 | 2874383  | rules                                   | {'promote': 0.1, 'payload': True, 'span': 0.5, 'miss': 30000, 'gbm_t': None}                                                                                                                                             | 0.676 |    0.497 | 0.736 |             35.000 |                   66.000 |
 | 2026-11-10 | 2874383  | rules+gbm_promote                       | {'promote': 0.0, 'payload': True, 'span': 0.5, 'miss': 30000, 'gbm_t': 0.3}                                                                                                                                              | 0.691 |    0.497 | 0.720 |             39.000 |                   60.000 |
+| 2026-11-10 | 6008c6f  | clean: chosen by train CV only          | {'promote': 0.1, 'payload': True, 'span': 1.0, 'miss': 15000, 'gbm_t': None}                                                                                                                                             | 1.021 |    0.705 | 0.691 |             45.000 |                   55.000 |
 
-## Train-only validation used to choose the official candidates (top 10 of `results/validation.csv`)
+## Clean selection: train-only 5-fold CV, top 10 of `results/cv_selection.csv`
 
-| flag                                                                 | value   |   L_mean |   L_std |   mse_hr |    f2 |   missed |   unnecessary |
-|:---------------------------------------------------------------------|:--------|---------:|--------:|---------:|------:|---------:|--------------:|
-| combo promote=0.0 payload=True span<0.5 miss>30000 gbm_promote=0.3   | latest  |    0.753 |   0.007 |    0.330 | 0.439 |   18.200 |       233.200 |
-| combo promote=0.1 payload=True span<0.5 miss>30000 gbm_promote=None  | latest  |    0.757 |   0.000 |    0.330 | 0.436 |   16.000 |       259.000 |
-| combo promote=0.1 payload=True span<0.5 miss>30000 gbm_promote=0.5   | latest  |    0.757 |   0.000 |    0.330 | 0.436 |   16.000 |       259.000 |
-| combo promote=0.1 payload=True span<0.5 miss>30000 gbm_promote=0.3   | latest  |    0.757 |   0.001 |    0.330 | 0.436 |   16.000 |       259.200 |
-| combo promote=0.0 payload=True span<None miss>30000 gbm_promote=0.3  | latest  |    0.759 |   0.007 |    0.330 | 0.435 |   18.200 |       237.200 |
-| combo promote=0.0 payload=True span<0.5 miss>30000 gbm_promote=0.5   | latest  |    0.761 |   0.006 |    0.330 | 0.434 |   18.800 |       233.000 |
-| combo promote=0.1 payload=True span<None miss>30000 gbm_promote=None | latest  |    0.763 |   0.000 |    0.330 | 0.432 |   16.000 |       264.000 |
-| combo promote=0.1 payload=True span<None miss>30000 gbm_promote=0.5  | latest  |    0.763 |   0.000 |    0.330 | 0.432 |   16.000 |       264.000 |
-| combo promote=0.1 payload=True span<None miss>30000 gbm_promote=0.3  | latest  |    0.764 |   0.001 |    0.330 | 0.432 |   16.000 |       264.200 |
-| combo promote=0.0 payload=True span<0.5 miss>30000 gbm_promote=None  | latest  |    0.764 |   0.000 |    0.330 | 0.432 |   19.000 |       233.000 |
+|   promote | payload   |   span |      miss |   gbm_t |   L_fold0 |   L_fold1 |   L_fold2 |   L_fold3 |   L_fold4 |   L_mean |
+|----------:|:----------|-------:|----------:|--------:|----------:|----------:|----------:|----------:|----------:|---------:|
+|     0.100 | True      |  1.000 | 15000.000 |         |     1.202 |     0.348 |     0.444 |     1.185 |     0.526 |    0.741 |
+|     0.100 | True      |  1.000 | 15000.000 |   0.300 |     1.202 |     0.348 |     0.444 |     1.185 |     0.526 |    0.741 |
+|     0.100 | True      |  1.000 | 15000.000 |   0.500 |     1.202 |     0.348 |     0.444 |     1.185 |     0.526 |    0.741 |
+|     0.000 | True      |  1.000 | 15000.000 |   0.300 |     1.236 |     0.331 |     0.423 |     1.174 |     0.569 |    0.747 |
+|     0.100 | True      |  0.500 | 15000.000 |         |     1.202 |     0.251 |     0.556 |     1.196 |     0.541 |    0.749 |
+|     0.100 | True      |  0.500 | 15000.000 |   0.300 |     1.202 |     0.251 |     0.556 |     1.196 |     0.541 |    0.749 |
+|     0.100 | True      |  0.500 | 15000.000 |   0.500 |     1.202 |     0.251 |     0.556 |     1.196 |     0.541 |    0.749 |
+|     0.100 | False     |  1.000 | 15000.000 |         |     1.213 |     0.359 |     0.452 |     1.185 |     0.541 |    0.750 |
+|     0.100 | False     |  1.000 | 15000.000 |   0.300 |     1.213 |     0.359 |     0.452 |     1.185 |     0.541 |    0.750 |
+|     0.100 | False     |  1.000 | 15000.000 |   0.500 |     1.213 |     0.359 |     0.452 |     1.185 |     0.541 |    0.750 |
 
 ## Why two protocols: ESA's train and test events behave differently
 

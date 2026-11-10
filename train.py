@@ -128,25 +128,6 @@ def metrics_row(protocol, method, y, risk, manoeuvre=None):
     return {"protocol": protocol, "method": method, **s}
 
 
-def rule_notes(X) -> list[str]:
-    """Plain-words reason for the official-split rule's call on each event (see evaluate_official.py)."""
-    out = []
-    for lr, ot, sp, md in zip(X.last_risk, X.object_type.astype(str), X.last_t_span, X.last_miss_distance):
-        if lr < k.HIGH - 0.1:
-            out.append(f"latest risk {lr:.2f} is below the line")
-        elif ot == "PAYLOAD":
-            out.append("the other object is an active payload")
-        elif sp < 0.5:
-            out.append(f"our satellite is small (t_span {sp:.2f} m)")
-        elif md > 30000:
-            out.append(f"miss distance {md:,.0f} m is large")
-        elif lr < k.HIGH:
-            out.append(f"latest risk {lr:.2f} is within 0.1 of the line")
-        else:
-            out.append(f"latest risk {lr:.2f} is above the line")
-    return out
-
-
 def main() -> None:
     OUT.mkdir(exist_ok=True)
     X, y, Xt, yt, test = prepare()
@@ -160,11 +141,9 @@ def main() -> None:
     # Recomputed here for metrics.csv: same predictions, not new test evaluations.
     from evaluate_official import CANDIDATES
     import tune
-    rule = {}
     for name, cfg in CANDIDATES.items():
-        rule[name] = tune.flag_combo(X, y, Xt, **cfg)
-        rows.append(metrics_row("official", f"rules: {name}", yt,
-                                np.where(rule[name], np.maximum(latest_t, k.HIGH), k.CLIP)))
+        f = tune.flag_combo(X, y, Xt, **cfg)
+        rows.append(metrics_row("official", f"rules: {name}", yt, np.where(f, np.maximum(latest_t, k.HIGH), k.CLIP)))
 
     parts = []
     for fold, (a, b) in enumerate(folds(yt)):
@@ -209,7 +188,7 @@ def main() -> None:
                      "latest_high_final_low": int(((lr >= k.HIGH) & (yy < k.HIGH)).sum()),
                      "latest_low_final_high": int(((lr < k.HIGH) & (yy >= k.HIGH)).sum())})
     pd.DataFrame(summ).to_csv(OUT / "data_summary.csv", index=False)
-    sh.assign(rule_manoeuvre=rule["rules"], rule_note=rule_notes(Xt), true_final_risk=yt, latest_risk=latest_t, n_cdms=Xt.n_cdms.to_numpy(),
+    sh.assign(true_final_risk=yt, latest_risk=latest_t, n_cdms=Xt.n_cdms.to_numpy(),
               mission_id=Xt.mission_id.astype(str).to_numpy()).to_csv(
         OUT / "predictions.csv", index_label="event_id", float_format="%.4f")
     print(pd.DataFrame(rows)[["protocol", "method", "L", "mse_hr", "f2", "missed_high_risk",

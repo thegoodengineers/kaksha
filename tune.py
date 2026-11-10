@@ -137,5 +137,35 @@ def main() -> None:
     pd.DataFrame(rows).sort_values("L_mean").to_csv(OUT / "validation.csv", index=False, float_format="%.4f")
 
 
+
+
+def cv_select() -> dict:
+    """Clean selection: one event-grouped stratified 5-fold CV on ESA's train events over the full rule
+    search space; the winner is the config with the lowest mean fold L. Writes every config and its
+    fold scores to results/cv_selection.csv. The test set is not read."""
+    from sklearn.model_selection import StratifiedKFold
+    X, y, *_ = T.prepare()
+    folds = list(StratifiedKFold(5, shuffle=True, random_state=T.SEED).split(X, y >= k.HIGH))
+    rows = []
+    for p, pay, sp, mi, g in itertools.product((0.0, 0.1, 0.2, 0.3), (False, True), (None, 0.5, 1.0),
+                                               (None, 15000, 30000, 50000), (None, 0.3, 0.5)):
+        cfg = dict(promote=p, payload=pay, span=sp, miss=mi, gbm_t=g)
+        Ls = []
+        for a, b in folds:
+            f = flag_combo(X.iloc[a], y[a], X.iloc[b], **cfg)
+            Ls.append(k.score(y[b], np.where(f, np.maximum(X.last_risk.to_numpy()[b], k.HIGH), k.CLIP))["L"])
+        rows.append({**{key: ("" if v is None else v) for key, v in cfg.items()},
+                     **{f"L_fold{i}": v for i, v in enumerate(Ls)}, "L_mean": float(np.mean(Ls))})
+    d = pd.DataFrame(rows).sort_values("L_mean", kind="stable")
+    d.to_csv(OUT / "cv_selection.csv", index=False, float_format="%.4f")
+    best = d.iloc[0]
+    print(d.head(5).to_string(index=False))
+    return {key: (None if best[key] == "" else best[key]) for key in ("promote", "payload", "span", "miss", "gbm_t")}
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    if sys.argv[1:] == ["--select"]:
+        print("CV pick:", cv_select())
+    else:
+        main()
