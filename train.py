@@ -139,11 +139,13 @@ def main() -> None:
     rows.append(metrics_row("official", "LightGBM gate", yt, off.pred_risk, off.manoeuvre))
     # The two candidates frozen from train-only validation (tune.py) and logged in results/test_log.csv.
     # Recomputed here for metrics.csv: same predictions, not new test evaluations.
-    from evaluate_official import CANDIDATES
+    from evaluate_official import CANDIDATES, CORRECTION
     import tune
     for name, cfg in CANDIDATES.items():
         f = tune.flag_combo(X, y, Xt, **cfg)
         rows.append(metrics_row("official", f"rules: {name}", yt, np.where(f, np.maximum(latest_t, k.HIGH), k.CLIP)))
+    for name, cfg in CORRECTION.items():
+        rows.append(metrics_row("official", f"correction: {name}", yt, tune.fit_predict_correction(X, y, Xt, cfg)))
 
     parts = []
     for fold, (a, b) in enumerate(folds(yt)):

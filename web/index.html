@@ -135,13 +135,14 @@ function stat(k, v, s) { return `<div class="stat"><div class="k">${k}</div><div
 
 function renderStrip() {
   const m = SUM.metrics, row = (p, meth) => m.find(r => r.protocol === p && r.method === meth);
-  const base = row("official", "baseline: latest CDM risk"), clean = row("official", "rules: clean");
+  const base = row("official", "baseline: latest CDM risk"), clean = row("official", "rules: clean"),
+    corr = row("official", "correction: clean-correction");
   const gbm = row("shifted", "LightGBM gate"), u = SUM.uncertainty[0];
   $("#strip").innerHTML =
     stat("Missed high-risk events", `${gbm.missed_high_risk}`, `latest-risk rule: ${base.missed_high_risk} of ${base.high_risk_events}`) +
     stat("Unnecessary manoeuvres", `${gbm.unnecessary_manoeuvres}`, `latest-risk rule: ${base.unnecessary_manoeuvres}`) +
     stat("Brier score (calibration)", f(u.brier, 3), `latest-risk rule: ${f(u.brier_latest_rule, 3)} (lower is better)`) +
-    stat("ESA official split: L", f(clean.L, 3), `latest-risk rule: ${f(base.L, 3)}. Not beaten`);
+    stat("ESA official split: L", `${f(corr.L, 3)} / ${f(clean.L, 3)}`, `two train-CV picks; latest-risk rule: ${f(base.L, 3)}. Not beaten`);
   $("#note").textContent = `${base.events.toLocaleString("en-IN")} ESA held-out events. The first three numbers retrain on recent events: a LightGBM model fitted with 4 of 5 folds of these events and scored on the fifth, so no event is scored by a model that saw it; it is the recommendation shown below. ` +
     `On ESA's official split (train events only, chosen by train cross-validation, scored once) KAKSHA does not beat the latest-risk rule. See the README.`;
 }

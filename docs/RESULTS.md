@@ -17,11 +17,12 @@ All rows: ESA's 2,167 held-out test events, 150 of them high risk (final log10 P
 | official   | rules: clean                  | 1.021 |    0.705 | 0.691 |                 45 |              0.700 |                       55 |              0.027 |
 | official   | rules: rules                  | 0.676 |    0.497 | 0.736 |                 35 |              0.767 |                       66 |              0.033 |
 | official   | rules: rules+gbm_promote      | 0.691 |    0.497 | 0.720 |                 39 |              0.740 |                       60 |              0.030 |
+| official   | correction: clean-correction  | 0.728 |    0.526 | 0.723 |                 37 |              0.753 |                       68 |              0.034 |
 | shifted    | LightGBM gate                 | 0.674 |    0.518 | 0.768 |                 23 |              0.847 |                      100 |              0.050 |
 
-`rules: clean` is the headline official result: chosen only by train 5-fold CV (`results/cv_selection.csv`). `rules: rules` and `rules: rules+gbm_promote` were chosen after about 60 unlogged exploratory test scorings and are not counted.
+`rules: clean` and `correction: clean-correction` are the official results we count: each chosen only by train 5-fold CV (`results/cv_selection.csv`, `results/cv_selection_correction.csv`). Neither beats the baseline. `rules: rules` and `rules: rules+gbm_promote` were chosen after about 60 unlogged exploratory test scorings and are not counted.
 
-## Official split: paired bootstrap of L(clean pick) - L(latest-risk rule)
+## Official split: paired bootstrap of L(clean rule pick) - L(latest-risk rule)
 
 | candidate   |   resamples |   delta_L_mean |   delta_L_p2.5 |   delta_L_p97.5 |   share_better |
 |:------------|------------:|---------------:|---------------:|----------------:|---------------:|
@@ -29,13 +30,14 @@ All rows: ESA's 2,167 held-out test events, 150 of them high risk (final log10 P
 
 ## Every official-test evaluation we ran (`results/test_log.csv`)
 
-| date       | commit   | candidate                               | config                                                                                                                                                                                                                   |     L |   mse_hr |    f2 |   missed_high_risk |   unnecessary_manoeuvres |
-|:-----------|:---------|:----------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------:|---------:|------:|-------------------:|-------------------------:|
-| 2026-11-10 | (none)   | exploration before this log existed     | about 60 exploratory test scorings in scratch scripts (direct/residual regression, classifier gates at several thresholds, logistic gates); printed to the console, not saved; none of them is used as a candidate below |       |          |       |                    |                          |
-| 2026-11-10 | a614bf7  | train.py official model (first release) | LightGBM P(high) gate, isotonic, F2 line on train OOF                                                                                                                                                                    | 0.849 |    0.613 | 0.722 |             38.000 |                   64.000 |
-| 2026-11-10 | 2874383  | rules                                   | {'promote': 0.1, 'payload': True, 'span': 0.5, 'miss': 30000, 'gbm_t': None}                                                                                                                                             | 0.676 |    0.497 | 0.736 |             35.000 |                   66.000 |
-| 2026-11-10 | 2874383  | rules+gbm_promote                       | {'promote': 0.0, 'payload': True, 'span': 0.5, 'miss': 30000, 'gbm_t': 0.3}                                                                                                                                              | 0.691 |    0.497 | 0.720 |             39.000 |                   60.000 |
-| 2026-11-10 | 6008c6f  | clean: chosen by train CV only          | {'promote': 0.1, 'payload': True, 'span': 1.0, 'miss': 15000, 'gbm_t': None}                                                                                                                                             | 1.021 |    0.705 | 0.691 |             45.000 |                   55.000 |
+| date       | commit   | candidate                                 | config                                                                                                                                                                                                                   |     L |   mse_hr |    f2 |   missed_high_risk |   unnecessary_manoeuvres |
+|:-----------|:---------|:------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------:|---------:|------:|-------------------:|-------------------------:|
+| 2026-11-10 | (none)   | exploration before this log existed       | about 60 exploratory test scorings in scratch scripts (direct/residual regression, classifier gates at several thresholds, logistic gates); printed to the console, not saved; none of them is used as a candidate below |       |          |       |                    |                          |
+| 2026-11-10 | a614bf7  | train.py official model (first release)   | LightGBM P(high) gate, isotonic, F2 line on train OOF                                                                                                                                                                    | 0.849 |    0.613 | 0.722 |             38.000 |                   64.000 |
+| 2026-11-10 | 2874383  | rules                                     | {'promote': 0.1, 'payload': True, 'span': 0.5, 'miss': 30000, 'gbm_t': None}                                                                                                                                             | 0.676 |    0.497 | 0.736 |             35.000 |                   66.000 |
+| 2026-11-10 | 2874383  | rules+gbm_promote                         | {'promote': 0.0, 'payload': True, 'span': 0.5, 'miss': 30000, 'gbm_t': 0.3}                                                                                                                                              | 0.691 |    0.497 | 0.720 |             39.000 |                   60.000 |
+| 2026-11-10 | 6008c6f  | clean: chosen by train CV only            | {'promote': 0.1, 'payload': True, 'span': 1.0, 'miss': 15000, 'gbm_t': None}                                                                                                                                             | 1.021 |    0.705 | 0.691 |             45.000 |                   55.000 |
+| 2026-11-10 | 10b08d3  | clean-correction: chosen by train CV only | {'subset': 'latest>=-8 & last CDM<=2.5 d', 'alpha': 1.0, 'lam': 0.25, 'demote_t': None, 'promote_t': None}                                                                                                               | 0.728 |    0.526 | 0.723 |             37.000 |                   68.000 |
 
 ## Clean selection: train-only 5-fold CV, top 10 of `results/cv_selection.csv`
 
@@ -51,6 +53,21 @@ All rows: ESA's 2,167 held-out test events, 150 of them high risk (final log10 P
 |     0.100 | False     |  1.000 | 15000.000 |         |     1.213 |     0.359 |     0.452 |     1.185 |     0.541 |    0.750 |
 |     0.100 | False     |  1.000 | 15000.000 |   0.300 |     1.213 |     0.359 |     0.452 |     1.185 |     0.541 |    0.750 |
 |     0.100 | False     |  1.000 | 15000.000 |   0.500 |     1.213 |     0.359 |     0.452 |     1.185 |     0.541 |    0.750 |
+
+## Clean selection 2: shrunk correction, top 10 of `results/cv_selection_correction.csv`
+
+| subset                       |   alpha |   lam | demote_t   |   promote_t |   L_fold0 |   L_fold1 |   L_fold2 |   L_fold3 |   L_fold4 |   L_mean |
+|:-----------------------------|--------:|------:|:-----------|------------:|----------:|----------:|----------:|----------:|----------:|---------:|
+| latest>=-8 & last CDM<=2.5 d |   1.000 | 0.250 |            |             |     1.105 |     0.268 |     0.482 |     1.469 |     0.780 |    0.821 |
+| latest>=-8 & last CDM<=2.5 d |   1.000 | 0.250 |            |       0.500 |     1.105 |     0.268 |     0.482 |     1.469 |     0.780 |    0.821 |
+| latest>=-8 & last CDM<=2.5 d |   1.000 | 0.250 |            |       0.700 |     1.105 |     0.268 |     0.482 |     1.469 |     0.780 |    0.821 |
+| latest>=-8                   |   1.000 | 0.000 |            |             |     1.587 |     0.265 |     0.432 |     1.230 |     0.648 |    0.833 |
+| latest>=-8                   |   1.000 | 0.000 |            |       0.500 |     1.587 |     0.265 |     0.432 |     1.230 |     0.648 |    0.833 |
+| latest>=-8                   |   1.000 | 0.000 |            |       0.700 |     1.587 |     0.265 |     0.432 |     1.230 |     0.648 |    0.833 |
+| latest>=-8                   |  10.000 | 0.000 |            |             |     1.587 |     0.265 |     0.432 |     1.230 |     0.648 |    0.833 |
+| latest>=-8                   |  10.000 | 0.000 |            |       0.500 |     1.587 |     0.265 |     0.432 |     1.230 |     0.648 |    0.833 |
+| latest>=-8                   |  10.000 | 0.000 |            |       0.700 |     1.587 |     0.265 |     0.432 |     1.230 |     0.648 |    0.833 |
+| latest>=-8                   | 100.000 | 0.000 |            |             |     1.587 |     0.265 |     0.432 |     1.230 |     0.648 |    0.833 |
 
 ## Why two protocols: ESA's train and test events behave differently
 
