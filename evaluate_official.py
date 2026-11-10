@@ -17,7 +17,11 @@ import train as T
 import tune
 
 LOG = pathlib.Path(__file__).resolve().parent / "results" / "test_log.csv"
-CANDIDATES = {  # frozen from results/validation.csv (rank 1 and the best rules-only row)
+CANDIDATES = {
+    # Headline. Frozen from results/cv_selection.csv: lowest mean L over one event-grouped 5-fold CV on
+    # ESA's train events only (tune.py --select); ties broken toward the simpler config (no classifier).
+    "clean": dict(promote=0.1, payload=True, span=1.0, miss=15000, gbm_t=None),
+    # Earlier, frozen from results/validation.csv after ~60 unlogged exploratory test scorings.
     "rules": dict(promote=0.1, payload=True, span=0.5, miss=30000, gbm_t=None),
     "rules+gbm_promote": dict(promote=0.0, payload=True, span=0.5, miss=30000, gbm_t=0.3),
 }
@@ -32,7 +36,8 @@ def main(name: str) -> None:
     f = flags(name, X, y, Xt)
     s = k.score(yt, np.where(f, np.maximum(Xt.last_risk.to_numpy(), k.HIGH), k.CLIP))
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
-    row = {"date": datetime.date.today().isoformat(), "commit": commit, "candidate": name,
+    label = "clean: chosen by train CV only" if name == "clean" else name
+    row = {"date": datetime.date.today().isoformat(), "commit": commit, "candidate": label,
            "config": str(CANDIDATES[name]), **{c: s[c] for c in ("L", "mse_hr", "f2", "missed_high_risk",
                                                                   "unnecessary_manoeuvres")}}
     pd.DataFrame([row]).to_csv(LOG, mode="a", header=not LOG.exists(), index=False, float_format="%.4f")
