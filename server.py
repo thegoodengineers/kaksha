@@ -69,7 +69,6 @@ def event(eid: int):
         "id": eid, "mission": str(r.mission_id), "n_cdms": int(r.n_cdms),
         "timeline": tl.drop(columns="event_id").round(4).to_dict(orient="records"),
         "p_high": r.p_high, "threshold": r.threshold, "manoeuvre": bool(r.manoeuvre),
-        "rule_manoeuvre": bool(r.rule_manoeuvre), "rule_note": r.rule_note,
         "q10": r.q10, "q50": r.q50, "q90": r.q90, "latest": r.latest_risk,
         "reasons": r.reasons.split("; "),
         "outcome": {"final_risk": r.true_final_risk, "time_to_tca": float(final.loc[eid, "time_to_tca"]),

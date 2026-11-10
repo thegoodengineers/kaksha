@@ -16,7 +16,7 @@ Branch: `<yourname>/<task>` → pull request into `main`. Run `python -m pytest 
 - [ ] Re-run `python train.py` on your laptop and compare `results/metrics.csv` with the repo. Note any
       difference (LightGBM can differ slightly across machines).
 
-- [ ] Check `results/test_log.csv`: every official-test evaluation must be there. Any new test run goes through
+- [ ] Check `results/test_log.csv`: every official-test evaluation must be there. The headline is the `clean` row. Any new test run goes through
       `evaluate_official.py` so it is logged; choose candidates with `tune.py` (train events only) first.
 
 ## 2. Round 2 (12-13 Dec)
