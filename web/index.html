@@ -135,14 +135,15 @@ function stat(k, v, s) { return `<div class="stat"><div class="k">${k}</div><div
 
 function renderStrip() {
   const m = SUM.metrics, row = (p, meth) => m.find(r => r.protocol === p && r.method === meth);
-  const ours = row("shifted", "model"), base = row("shifted", "baseline: latest CDM risk"), off = row("official", "model");
+  const base = row("official", "baseline: latest CDM risk"), rules = row("official", "rules: rules");
+  const gbm = row("shifted", "LightGBM gate"), b = SUM.bootstrap[0];
   $("#strip").innerHTML =
-    stat("Missed high-risk events", `${ours.missed_high_risk}`, `latest-risk rule: ${base.missed_high_risk} of ${ours.high_risk_events}`) +
-    stat("Unnecessary manoeuvres", `${ours.unnecessary_manoeuvres}`, `latest-risk rule: ${base.unnecessary_manoeuvres}`) +
-    stat("ESA score L (lower is better)", f(ours.L, 3), `latest-risk rule: ${f(base.L, 3)}`) +
-    stat("F2 (recall-weighted)", f(ours.f2, 3), `latest-risk rule: ${f(base.f2, 3)}`);
-  $("#note").textContent = `${ours.events.toLocaleString("en-IN")} ESA held-out events, scored 5-fold by event: each is predicted by a model that never saw it. ` +
-    `On ESA's original split alone (train on ESA's train events only) KAKSHA does worse than the rule: L ${f(off.L, 3)}, ${off.missed_high_risk} missed. See the README.`;
+    stat("ESA official split: score L", f(rules.L, 3), `latest-risk rule: ${f(base.L, 3)} (lower is better)`) +
+    stat("Better than the rule in", `${Math.round(b.share_better * 100)} %`, `of ${b.resamples.toLocaleString("en-IN")} bootstrap resamples: not yet certain`) +
+    stat("Missed high-risk, retrained model", `${gbm.missed_high_risk}`, `latest-risk rule: ${base.missed_high_risk} of ${base.high_risk_events}`) +
+    stat("Unnecessary manoeuvres, retrained", `${gbm.unnecessary_manoeuvres}`, `latest-risk rule: ${base.unnecessary_manoeuvres}`);
+  $("#note").textContent = `${base.events.toLocaleString("en-IN")} ESA held-out events. Official split: rules tuned only on ESA's train events (MSE ${f(rules.mse_hr, 3)} vs ${f(base.mse_hr, 3)}, F2 ${f(rules.f2, 3)} vs ${f(base.f2, 3)}). ` +
+    `Retrained model: LightGBM fitted with 4 of 5 folds of these events and scored on the fifth, so no event is scored by a model that saw it; it is the recommendation shown below. See the README.`;
 }
 
 function renderList() {
@@ -190,7 +191,8 @@ async function show(id, reveal = false) {
     <p style="margin:0">Probability the final risk is high (log₁₀ Pc ≥ −6): <strong class="num">${f(d.p_high, 2)}</strong>
       <span class="meta">(manoeuvre line ${f(d.threshold, 2)})</span><br>
       Forecast final log₁₀ Pc: <strong class="num">${f(d.q50)}</strong>, 80 % range <span class="num">${f(d.q10)}</span> to <span class="num">${f(d.q90)}</span>
-      <span class="meta">· latest message: <span class="num">${f(d.latest)}</span></span></p>
+      <span class="meta">· latest message: <span class="num">${f(d.latest)}</span></span><br>
+      <span class="meta">ESA-split rule says <strong>${d.rule_manoeuvre ? "manoeuvre" : "monitor"}</strong>: ${d.rule_note}.</span></p>
     ${chart(d, reveal)}
     <h2 style="margin-top:16px">Why</h2>
     <ol class="reasons">${d.reasons.map(r => `<li>${r}</li>`).join("")}</ol>

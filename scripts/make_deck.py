@@ -31,8 +31,10 @@ DY = 0.4  # keeps content below the template's star at the top left
 
 m = pd.read_csv(ROOT / "results" / "metrics.csv")
 row = lambda p, meth: m[(m.protocol == p) & (m.method == meth)].iloc[0]  # noqa: E731
-OURS, RULE = row("shifted", "model"), row("shifted", "baseline: latest CDM risk")
-OFF = row("official", "model")
+OURS, RULE = row("shifted", "LightGBM gate"), row("shifted", "baseline: latest CDM risk")
+OFF = row("official", "LightGBM gate")
+RULES = row("official", "rules: rules")
+BOOT = pd.read_csv(ROOT / "results" / "official_bootstrap.csv").iloc[0]
 DS = pd.read_csv(ROOT / "results" / "data_summary.csv").set_index("set")
 TR, TE = DS.loc["ESA train (usable events)"], DS.loc["ESA test"]
 U = pd.read_csv(ROOT / "results" / "uncertainty.csv").iloc[0]
@@ -183,8 +185,9 @@ def main(template: str) -> None:
         "• The operator sets the fuel-against-risk line and sees what it costs.",
     ])
     box(sl, 9.6, 6.2, 7.6, 2.3,
-        f"USP: {MISS_O} missed instead of {MISS_R}\nhigh-risk events on {N_EV:,} ESA held-out events,\ntwo days out, "
-        f"for {UNN_O - UNN_R} more manoeuvres ({UNN_O} vs {UNN_R})", fill=RGBColor(0xFF, 0xF4, 0xE0), size=20)
+        f"USP: decisions you can check\nESA official split: L {RULES.L:.3f} vs {RULE.L:.3f} for the rule (small margin)\n"
+        f"Retrained on recent events: {MISS_O} missed instead of {MISS_R},\nfor {UNN_O - UNN_R} more manoeuvres",
+        fill=RGBColor(0xFF, 0xF4, 0xE0), size=18)
 
     # 3. Features
     sl = s[2]
@@ -231,8 +234,8 @@ def main(template: str) -> None:
         box(sl, x, 5.6, 2.85, 1.45, t, fill=RGBColor(0xFF, 0xFF, 0xFF), size=13, shape=MSO_SHAPE.RECTANGLE)
         arrow(sl, x + 1.425, 4.85, x + 1.425, 5.6)
     text(sl, 1.1, 7.35, 16, 1.5, [
-        (f"Measured on {N_EV:,} ESA held-out events: KAKSHA misses {MISS_O} high-risk events, the latest-message rule "
-         f"misses {MISS_R}. Use case: a flight-dynamics operator triaging dozens of close approaches a week, "
+        (f"Measured on {N_EV:,} ESA held-out events: official split L {RULES.L:.3f} vs {RULE.L:.3f}; retrained model "
+         f"misses {MISS_O} high-risk events where the latest-message rule misses {MISS_R}. Use case: a flight-dynamics operator triaging dozens of close approaches a week, "
          "manoeuvring only where it matters.", 18, False, INK)])
 
     # 5. Architecture
@@ -289,26 +292,27 @@ def main(template: str) -> None:
     sl = s[6]
     drop_template_text(sl)
     title(sl, "Extra 1: what we measured (ESA held-out events, two days out)",
-          f"{N_EV:,} events, {N_HI} high risk. Each event predicted by a model that never saw it.")
-    pic(sl, chart(), 1.1, 2.85, w=8.0)
-    text(sl, 10.2, 2.8, 7.0, 3.6, [
-        ("ESA's score L (lower is better)", 20, True, NAVY),
-        (f"KAKSHA {OURS.L:.3f} · latest-message rule {RULE.L:.3f}", 20, False, INK),
-        (f"F2: {OURS.f2:.3f} vs {RULE.f2:.3f}", 18, False, INK),
-        ("Calibrated", 20, True, NAVY),
-        (f"Brier {U.brier:.3f} vs {U.brier_latest_rule:.3f} for the rule. Events given 0.6–0.8 ended high risk "
-         f"{CAL[(CAL.bin_low == 0.6)].observed_high_risk.iloc[0]:.0%} of the time.", 17, False, INK),
+          f"{N_EV:,} events, {N_HI} high risk. ESA's score L = MSE on high-risk events / F2, lower is better.")
+    text(sl, 1.1, 2.8, 7.7, 3.4, [
+        ("1. ESA's official split", 22, True, NAVY),
+        ("Rules tuned on ESA's train events only, scored on the test set once:", 17, False, GREY),
+        (f"L {RULES.L:.3f} vs {RULE.L:.3f} for the latest-message rule", 21, True, INK),
+        (f"MSE {RULES.mse_hr:.3f} vs {RULE.mse_hr:.3f} · F2 {RULES.f2:.3f} vs {RULE.f2:.3f} · "
+         f"missed {int(RULES.missed_high_risk)} vs {int(RULE.missed_high_risk)}", 17, False, INK),
+        (f"Better in {BOOT.share_better:.0%} of {int(BOOT.resamples):,} bootstrap resamples: a small win, not yet "
+         "certain. Every test evaluation is logged (results/test_log.csv).", 17, False, INK),
     ])
-    text(sl, 1.1, 6.15, 16.1, 2.6, [
-        ("Where we lose, said plainly", 20, True, AMBER),
-        (f"Trained on ESA's train events alone, KAKSHA is worse than the rule (L {OFF.L:.3f}, {int(OFF.missed_high_risk)} "
-         f"missed). ESA's train and test events differ: when the latest message said high risk, {int(TR.latest_high_final_low)} "
-         f"of {int(TR.latest_high)} train events ended low, but only {int(TE.latest_high_final_low)} of {int(TE.latest_high)} test "
-         "events. So the numbers above retrain with recent events (5 folds over the test events, split by event), as an "
-         "operator would.", 16, False, INK),
-        (f"The 80 % range holds the final risk for {U.coverage_all:.0%} of events but only {U.coverage_high_risk:.0%} "
-         "of high-risk ones: next to fix. ESA's competition winner scored 0.556 (published); we have not matched it.",
-         16, False, INK),
+    text(sl, 9.3, 2.8, 7.9, 0.6, [("2. Retrained on recent events (LightGBM)", 22, True, NAVY)])
+    pic(sl, chart(), 9.3, 3.4, w=7.6)
+    text(sl, 1.1, 6.35, 16.1, 2.4, [
+        ("Said plainly", 20, True, AMBER),
+        (f"Our first model (LightGBM trained on ESA's train events) lost on the official split: L {OFF.L:.3f}. ESA's train "
+         f"and test events differ: when the latest message said high risk, {int(TR.latest_high_final_low)} of {int(TR.latest_high)} "
+         f"train events ended low but only {int(TE.latest_high_final_low)} of {int(TE.latest_high)} test events, hence the "
+         "retrained view (5 folds by event, no event scored by a model that saw it). The rules follow the published winner's "
+         "approach; ESA's winner scored 0.556 and we have not matched it. "
+         f"Calibrated: Brier {U.brier:.3f} vs {U.brier_latest_rule:.3f}. Ranges hold {U.coverage_high_risk:.0%} of high-risk "
+         "finals for an 80 % range: next to fix.", 16, False, INK),
     ])
 
     # 8. Extra: 24-hour build plan

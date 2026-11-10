@@ -1,0 +1,5 @@
+date,commit,candidate,config,L,mse_hr,f2,missed_high_risk,unnecessary_manoeuvres
+2026-11-10,(none),exploration before this log existed,"about 60 exploratory test scorings in scratch scripts (direct/residual regression, classifier gates at several thresholds, logistic gates); printed to the console, not saved; none of them is used as a candidate below",,,,,
+2026-11-10,a614bf7,train.py official model (first release),"LightGBM P(high) gate, isotonic, F2 line on train OOF",0.8491,0.6128,0.7216,38,64
+2026-11-10,2874383,rules,"{'promote': 0.1, 'payload': True, 'span': 0.5, 'miss': 30000, 'gbm_t': None}",0.6758,0.4975,0.7362,35,66
+2026-11-10,2874383,rules+gbm_promote,"{'promote': 0.0, 'payload': True, 'span': 0.5, 'miss': 30000, 'gbm_t': 0.3}",0.6912,0.4975,0.7198,39,60
