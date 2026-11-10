@@ -33,7 +33,8 @@ m = pd.read_csv(ROOT / "results" / "metrics.csv")
 row = lambda p, meth: m[(m.protocol == p) & (m.method == meth)].iloc[0]  # noqa: E731
 OURS, RULE = row("shifted", "LightGBM gate"), row("shifted", "baseline: latest CDM risk")
 OFF = row("official", "LightGBM gate")
-RULES = row("official", "rules: clean")  # headline: chosen by train CV only
+RULES = row("official", "rules: clean")  # clean pick 1: chosen by train CV only
+CORR = row("official", "correction: clean-correction")  # clean pick 2
 BOOT = pd.read_csv(ROOT / "results" / "official_bootstrap.csv").iloc[0]
 DS = pd.read_csv(ROOT / "results" / "data_summary.csv").set_index("set")
 TR, TE = DS.loc["ESA train (usable events)"], DS.loc["ESA test"]
@@ -298,10 +299,10 @@ def main(template: str) -> None:
     pic(sl, chart(), 1.1, 3.4, w=7.6)
     text(sl, 9.4, 2.8, 7.8, 3.4, [
         ("2. ESA's official split: not beaten", 22, True, AMBER),
-        ("Rules chosen only by 5-fold CV on ESA's train events, scored on the test set once:", 17, False, GREY),
-        (f"L {RULES.L:.3f} vs {RULE.L:.3f} for the latest-CDM baseline", 21, True, INK),
-        (f"MSE {RULES.mse_hr:.3f} vs {RULE.mse_hr:.3f} · F2 {RULES.f2:.3f} vs {RULE.f2:.3f}", 17, False, INK),
-        (f"Worse in {1 - BOOT.share_better:.1%} of {int(BOOT.resamples):,} bootstrap resamples.", 17, False, INK),
+        ("Two picks, each chosen only by 5-fold CV on ESA's train events, scored on the test set once:", 17, False, GREY),
+        (f"Latest-CDM baseline: L {RULE.L:.3f} · MSE {RULE.mse_hr:.3f} · F2 {RULE.f2:.3f}", 19, True, INK),
+        (f"Latest + shrunk ridge correction: L {CORR.L:.3f} · MSE {CORR.mse_hr:.3f} · F2 {CORR.f2:.3f}", 17, False, INK),
+        (f"Rule set: L {RULES.L:.3f} · MSE {RULES.mse_hr:.3f} · F2 {RULES.f2:.3f}", 17, False, INK),
     ])
     text(sl, 1.1, 6.6, 16.1, 2.4, [
         ("Said plainly", 20, True, AMBER),

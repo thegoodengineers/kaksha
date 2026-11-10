@@ -188,6 +188,8 @@ def _design(X):
 
 SUBSETS = {"latest>=-8": lambda X: X.last_risk.to_numpy() >= -8,
            "latest>=-6.5": lambda X: X.last_risk.to_numpy() >= -6.5,
+           "latest>=-6": lambda X: X.last_risk.to_numpy() >= k.HIGH,
+           "latest>=-6 & last CDM<=2.5 d": lambda X: (X.last_risk.to_numpy() >= k.HIGH) & (X.last_time_to_tca.to_numpy() <= 2.5),
            "latest>=-8 & last CDM<=2.5 d": lambda X: (X.last_risk.to_numpy() >= -8) & (X.last_time_to_tca.to_numpy() <= 2.5)}
 
 

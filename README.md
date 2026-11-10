@@ -38,19 +38,21 @@ the final risk for 94 % of all events but only 70 % of high-risk ones (`results/
 
 ### ESA's official split: not beaten
 On the competition's own protocol (train on ESA's train events, score the test events once), **KAKSHA does not
-beat the latest-CDM baseline.** Our headline official result is a rule set chosen *only* by one event-grouped
-5-fold cross-validation on ESA's train events (`tune.py --select`, every config and fold score in
-`results/cv_selection.csv`), then scored on the test set once:
+beat the latest-CDM baseline.** We made two clean attempts. Each was chosen *only* by one event-grouped 5-fold
+cross-validation on ESA's train events (lowest mean fold L), then scored on the test set once:
 
-| Official split | Latest-CDM baseline | KAKSHA (train-CV pick) |
-|---|---|---|
-| ESA score L | **0.694** | 1.021 |
-| MSE on high-risk events | **0.513** | 0.705 |
-| F2 | **0.739** | 0.691 |
+| Official split | ESA score L | MSE on high-risk | F2 |
+|---|---|---|---|
+| Latest-CDM baseline | **0.694** | **0.513** | **0.739** |
+| Rule set (`tune.py --select`, `results/cv_selection.csv`, 288 configs) | 1.021 | 0.705 | 0.691 |
+| Latest risk + shrunk ridge correction (`tune.py --select-correction`, `results/cv_selection_correction.csv`, 1,080 configs) | 0.728 | 0.526 | 0.723 |
 
-It is worse in 99.4 % of paired bootstrap resamples (`results/official_bootstrap.csv`). Train cross-validation
-did not predict test performance here, which matches the challenge paper's finding that the train and test
-sets differ by mission and that train scores barely correlated with test scores.
+The second attempt follows the challenge paper's advice: train on events like the test ones (latest risk >= -8,
+last CDM within 2.5 days), predict the latest risk plus a ridge correction, and let cross-validation choose how
+far to move from the baseline (shrinkage 0 reproduces it exactly; CV chose 0.25). It also searched separate
+classifiers for the two failure cases (latest high but final low; latest low but final high); CV rejected both.
+Train cross-validation did not predict test performance here, which matches the paper's finding that the train
+and test sets differ by mission and that train scores barely correlated with test scores.
 
 Disclosure: before we started logging, we ran about 60 exploratory test scorings in scratch scripts, and two
 candidates chosen after them (following the published winner's rules, whose thresholds were partly tuned on the
@@ -75,7 +77,8 @@ published baseline exactly (L = 0.694; checked in `test_kaksha.py` and CI). The 
 python -m pip install -r requirements.txt
 python scripts/get_data.py          # 221 MB download from Zenodo
 python -m pytest -q                 # split, cutoff and metric checks
-python tune.py --select             # train-only 5-fold CV pick, writes results/cv_selection.csv
+python tune.py --select             # train-only 5-fold CV pick (rules), results/cv_selection.csv
+python tune.py --select-correction  # train-only 5-fold CV pick (shrunk correction)
 python train.py                     # about 2 minutes; writes results/*.csv
 python evaluate_official.py clean   # ONE logged test evaluation (appends to results/test_log.csv)
 python scripts/results_md.py        # docs/RESULTS.md from the CSVs
