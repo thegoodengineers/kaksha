@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KAKSHA · collision risk console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* Rules: 1) colour means state only: amber = plan a manoeuvre, teal = monitor, red = missed.
+   2) every number is mono. 3) hairlines, not boxes. 4) one statement per page in the display size.
+   5) motion only on reveal, and never with prefers-reduced-motion. */
+:root{
+  --ink:#0d1321; --ink-2:#151d30; --line:#2a3550; --paper:#eef1f6; --muted:#a9b3c7;
+  --amber:#ffb547; --teal:#4fd1c5; --red:#ff7b72; --focus:#ffe08a;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink);color:var(--paper);font:16px/1.5 var(--sans)}
+a{color:var(--teal)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px}
+header{position:relative;overflow:hidden;border-bottom:1px solid var(--line);padding:36px 0 28px}
+header svg.orbits{position:absolute;right:-80px;top:-120px;width:520px;opacity:.5}
+.brand{font:600 14px var(--mono);letter-spacing:.2em;color:var(--muted)}
+h1{font-size:clamp(28px,4vw,46px);line-height:1.1;margin:8px 0 10px;max-width:760px}
+.lede{color:var(--muted);max-width:720px;margin:0}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));border-bottom:1px solid var(--line)}
+.stat{padding:18px 20px 18px 0;border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat .k{font:600 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font:600 30px var(--mono)}
+.stat .s{font-size:14px;color:var(--muted)}
+.note{font-size:14px;color:var(--muted);padding:10px 0 0}
+main{display:grid;grid-template-columns:300px 1fr;gap:32px;padding:28px 0}
+@media (max-width:860px){main{grid-template-columns:1fr}}
+h2{font-size:20px;margin:0 0 12px}
+label{display:block;font-size:14px;color:var(--muted);margin-bottom:6px}
+select,input[type=number]{width:100%;background:var(--ink-2);color:var(--paper);border:1px solid var(--line);border-radius:6px;padding:8px;font:15px var(--sans)}
+ul.events{list-style:none;margin:12px 0 0;padding:0;max-height:560px;overflow:auto;border-top:1px solid var(--line)}
+ul.events button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:1fr auto;width:100%;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer;font:14px var(--mono)}
+ul.events button:hover,ul.events button[aria-current=true]{background:var(--ink-2)}
+ul.events button:focus-visible{outline:3px solid var(--focus);outline-offset:-3px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle}
+.m{background:var(--amber)} .o{background:var(--teal)}
+.rec{font-size:clamp(26px,3vw,36px);font-weight:700;margin:4px 0}
+.rec.man{color:var(--amber)} .rec.mon{color:var(--teal)}
+.num{font-family:var(--mono)}
+.meta{color:var(--muted);font-size:15px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media (max-width:700px){.grid2{grid-template-columns:1fr}}
+svg.chart{width:100%;height:auto;background:var(--ink-2);border-radius:8px}
+.reasons{margin:6px 0 0;padding-left:20px}
+button.reveal{background:transparent;color:var(--paper);border:1px solid var(--paper);border-radius:6px;padding:9px 14px;font:600 15px var(--sans);cursor:pointer;margin-top:14px}
+.outcome{margin-top:10px;font-size:16px}
+.reveal-in{animation:fade .5s ease-out}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.reveal-in{animation:none}}
+section.trade{border-top:1px solid var(--line);padding:28px 0}
+input[type=range]{width:100%;accent-color:var(--amber)}
+table{border-collapse:collapse;font:14px var(--mono);width:100%}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600}
+footer{border-top:1px solid var(--line);padding:20px 0 40px;color:var(--muted);font-size:14px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<header>
+  <svg class="orbits" viewBox="0 0 400 400" aria-hidden="true" focusable="false">
+    <g fill="none" stroke="#2a3550"><circle cx="200" cy="200" r="60"/><circle cx="200" cy="200" r="110"/><circle cx="200" cy="200" r="165"/></g>
+    <circle cx="310" cy="200" r="5" fill="#4fd1c5"/><circle cx="83" cy="318" r="5" fill="#ffb547"/>
+  </svg>
+  <div class="wrap">
+    <div class="brand">KAKSHA · COLLISION RISK CONSOLE</div>
+    <h1>Two days before closest approach: plan a manoeuvre, or keep monitoring?</h1>
+    <p class="lede">For each close approach in ESA's held-out set, KAKSHA reads only the warning messages received at least two days out,
+      forecasts the final collision risk, and recommends what to do, with its confidence and the reasons.</p>
+  </div>
+</header>
+<div class="wrap">
+  <section aria-label="Results on held-out events">
+    <div class="strip" id="strip"></div>
+    <p class="note" id="note"></p>
+  </section>
+  <main>
+    <nav aria-label="Events">
+      <h2>Held-out events</h2>
+      <label for="filter">Show</label>
+      <select id="filter">
+        <option value="top">Highest predicted risk first</option>
+        <option value="caught">Caught: latest risk said low, final was high</option>
+        <option value="missed">Missed by KAKSHA</option>
+        <option value="unnecessary">Unnecessary manoeuvres</option>
+        <option value="all">All events</option>
+      </select>
+      <label for="jump" style="margin-top:12px">Or open event number</label>
+      <input id="jump" type="number" min="0" inputmode="numeric">
+      <ul class="events" id="list"></ul>
+    </nav>
+    <section aria-live="polite" id="detail" aria-label="Selected event"></section>
+  </main>
+  <section class="trade" aria-labelledby="th">
+    <h2 id="th">Fuel against risk: move the decision line</h2>
+    <p class="meta">Lower the probability needed to recommend a manoeuvre and fewer dangerous events are missed, but more manoeuvres are spent on
+      events that end safe. Counts are over all 2,167 held-out events. The marked operating point is the line each fold chose from its own training events.</p>
+    <div class="grid2">
+      <div>
+        <label for="thr">Recommend a manoeuvre when P(high risk) is at least <output id="thrv" class="num" for="thr"></output></label>
+        <input id="thr" type="range" min="0.01" max="0.95" step="0.01" value="0.15">
+        <div class="strip" id="tradeStats" style="border:0"></div>
+      </div>
+      <div id="tradeChart"></div>
+    </div>
+  </section>
+  <section class="trade" aria-labelledby="ch">
+    <h2 id="ch">Is the confidence honest?</h2>
+    <p class="meta">Held-out events grouped by the probability KAKSHA gave. If it says 0.6, about 60 % of those events should end high risk.</p>
+    <div id="calib"></div>
+  </section>
+</div>
+<footer>
+  <div class="wrap">Data: ESA Collision Avoidance Challenge dataset (Zenodo 10.5281/zenodo.4463683, CC-BY-4.0), anonymised CDMs, 2015-2019.
+    Metric and rules: Uriot et al., Astrodynamics 2022. A research prototype, not an operational system. Team The Good Engineers, StarForge 2026 SW-5.</div>
+</footer>
+<script>
+const $ = s => document.querySelector(s);
+const f = (x, d = 2) => (x === null || x === undefined || Number.isNaN(x)) ? "–" : Number(x).toFixed(d).replace("-", "−");
+let EVENTS = [], SUM = null, current = null;
+
+async function get(u) { const r = await fetch(u); if (!r.ok) throw new Error(u + " " + r.status); return r.json(); }
+
+function stat(k, v, s) { return `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`; }
+
+function renderStrip() {
+  const m = SUM.metrics, row = (p, meth) => m.find(r => r.protocol === p && r.method === meth);
+  const ours = row("shifted", "model"), base = row("shifted", "baseline: latest CDM risk"), off = row("official", "model");
+  $("#strip").innerHTML =
+    stat("Missed high-risk events", `${ours.missed_high_risk}`, `latest-risk rule: ${base.missed_high_risk} of ${ours.high_risk_events}`) +
+    stat("Unnecessary manoeuvres", `${ours.unnecessary_manoeuvres}`, `latest-risk rule: ${base.unnecessary_manoeuvres}`) +
+    stat("ESA score L (lower is better)", f(ours.L, 3), `latest-risk rule: ${f(base.L, 3)}`) +
+    stat("F2 (recall-weighted)", f(ours.f2, 3), `latest-risk rule: ${f(base.f2, 3)}`);
+  $("#note").textContent = `${ours.events.toLocaleString("en-IN")} ESA held-out events, scored 5-fold by event: each is predicted by a model that never saw it. ` +
+    `On ESA's original split alone (train on ESA's train events only) KAKSHA does worse than the rule: L ${f(off.L, 3)}, ${off.missed_high_risk} missed. See the README.`;
+}
+
+function renderList() {
+  const v = $("#filter").value;
+  let ev = EVENTS;
+  if (v === "caught") ev = EVENTS.filter(e => e.kind.startsWith("caught"));
+  if (v === "missed") ev = EVENTS.filter(e => e.kind === "missed");
+  if (v === "unnecessary") ev = EVENTS.filter(e => e.kind === "unnecessary manoeuvre");
+  if (v !== "all") ev = ev.slice(0, 80);
+  $("#list").innerHTML = ev.map(e =>
+    `<li><button data-id="${e.id}" aria-current="${e.id === current}"><span><span class="dot ${e.manoeuvre ? "m" : "o"}" aria-hidden="true"></span>Event ${e.id}</span><span>P ${f(e.p, 2)}<span class="sr">, ${e.manoeuvre ? "plan a manoeuvre" : "monitor"}</span></span></button></li>`).join("")
+    || `<li class="meta" style="padding:10px 0">No events in this group.</li>`;
+}
+
+function chart(d, reveal) {
+  const W = 640, H = 300, L = 52, R = 16, T = 16, B = 40, lo = -10, hi = -2, xmax = 7;
+  const x = t => L + (xmax - Math.min(t, xmax)) / xmax * (W - L - R);
+  const y = r => T + (hi - Math.max(Math.min(r, hi), lo)) / (hi - lo) * (H - T - B);
+  let g = `<rect x="${x(2)}" y="${T}" width="${x(0) - x(2)}" height="${H - T - B}" fill="#0d1321"/>`;
+  g += `<text x="${(x(2) + x(0)) / 2}" y="${T + 16}" fill="#a9b3c7" font-size="12" text-anchor="middle">not available</text>`;
+  g += `<text x="${(x(2) + x(0)) / 2}" y="${T + 31}" fill="#a9b3c7" font-size="12" text-anchor="middle">at decision time</text>`;
+  for (let r = lo; r <= hi; r += 2) g += `<line x1="${L}" x2="${W - R}" y1="${y(r)}" y2="${y(r)}" stroke="#2a3550"/><text x="${L - 8}" y="${y(r) + 4}" fill="#a9b3c7" font-size="12" text-anchor="end">${r === lo ? "≤−10" : "−" + (-r)}</text>`;
+  for (let t = 0; t <= xmax; t++) g += `<text x="${x(t)}" y="${H - B + 18}" fill="#a9b3c7" font-size="12" text-anchor="middle">${t}</text>`;
+  g += `<text x="${(L + W - R) / 2}" y="${H - 4}" fill="#a9b3c7" font-size="12" text-anchor="middle">days before closest approach</text>`;
+  g += `<line x1="${L}" x2="${W - R}" y1="${y(-6)}" y2="${y(-6)}" stroke="#ff7b72" stroke-dasharray="6 4"/><text x="${L + 6}" y="${y(-6) - 6}" fill="#ff7b72" font-size="12">high-risk line (Pc = 10⁻⁶)</text>`;
+  const pts = d.timeline.map(c => `${x(c.time_to_tca)},${y(c.risk)}`).join(" ");
+  g += `<polyline points="${pts}" fill="none" stroke="#eef1f6" stroke-width="1.5"/>`;
+  g += d.timeline.map(c => `<circle cx="${x(c.time_to_tca)}" cy="${y(c.risk)}" r="3.5" fill="#eef1f6"/>`).join("");
+  const col = d.manoeuvre ? "#ffb547" : "#4fd1c5", xf = x(0) - 10;
+  g += `<line x1="${xf}" x2="${xf}" y1="${y(d.q90)}" y2="${y(d.q10)}" stroke="${col}" stroke-width="6" stroke-linecap="round" opacity=".6"/><circle cx="${xf}" cy="${y(d.q50)}" r="6" fill="${col}"/>`;
+  if (reveal) g += `<g class="reveal-in"><circle cx="${x(d.outcome.time_to_tca)}" cy="${y(d.outcome.final_risk)}" r="7" fill="none" stroke="#ff7b72" stroke-width="2.5"/></g>`;
+  const desc = `Risk history of event ${d.id}: ${d.timeline.length} messages from ${f(d.timeline[0].time_to_tca, 1)} to ${f(d.timeline[d.timeline.length - 1].time_to_tca, 1)} days out, latest log10 risk ${f(d.latest)}. ` +
+    `Forecast of the final risk: median ${f(d.q50)}, 80 percent range ${f(d.q10)} to ${f(d.q90)}.` + (reveal ? ` Actual final risk ${f(d.outcome.final_risk)}.` : "");
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${desc}">${g}</svg>`;
+}
+
+async function show(id, reveal = false) {
+  let d;
+  try { d = await get(`/api/event/${id}`); } catch (e) { $("#detail").innerHTML = `<p class="meta">Event ${id} is not in the held-out set.</p>`; return; }
+  current = d.id; renderList();
+  const cls = d.manoeuvre ? "man" : "mon";
+  $("#detail").innerHTML = `
+    <div class="meta">Event ${d.id} · mission ${d.mission} · ${d.n_cdms} messages received 2+ days out</div>
+    <div class="rec ${cls}"><span class="dot ${d.manoeuvre ? "m" : "o"}" aria-hidden="true"></span>${d.manoeuvre ? "Plan a manoeuvre" : "Monitor"}</div>
+    <p style="margin:0">Probability the final risk is high (log₁₀ Pc ≥ −6): <strong class="num">${f(d.p_high, 2)}</strong>
+      <span class="meta">(manoeuvre line ${f(d.threshold, 2)})</span><br>
+      Forecast final log₁₀ Pc: <strong class="num">${f(d.q50)}</strong>, 80 % range <span class="num">${f(d.q10)}</span> to <span class="num">${f(d.q90)}</span>
+      <span class="meta">· latest message: <span class="num">${f(d.latest)}</span></span></p>
+    ${chart(d, reveal)}
+    <h2 style="margin-top:16px">Why</h2>
+    <ol class="reasons">${d.reasons.map(r => `<li>${r}</li>`).join("")}</ol>
+    ${reveal ? `<p class="outcome reveal-in">What happened: final log₁₀ Pc <strong class="num">${f(d.outcome.final_risk)}</strong>,
+        ${f(d.outcome.time_to_tca, 2)} days before closest approach (red ring). <strong>${d.outcome.kind[0].toUpperCase() + d.outcome.kind.slice(1)}.</strong></p>`
+      : `<button class="reveal" id="rev">Reveal what happened</button>`}`;
+  if (!reveal) $("#rev").onclick = () => show(d.id, true).then(() => $("#detail h2").focus?.());
+}
+
+function renderTrade() {
+  const t = Number($("#thr").value), row = SUM.tradeoff.reduce((a, b) => Math.abs(b.threshold - t) < Math.abs(a.threshold - t) ? b : a);
+  const base = SUM.metrics.find(r => r.protocol === "shifted" && r.method === "baseline: latest CDM risk");
+  $("#thrv").textContent = f(t, 2);
+  $("#tradeStats").innerHTML = stat("Missed high-risk", row.missed_high_risk, `rule: ${base.missed_high_risk}`) + stat("Unnecessary manoeuvres", row.unnecessary_manoeuvres, `rule: ${base.unnecessary_manoeuvres}`);
+  const W = 420, H = 240, L = 50, B = 36, T = 10, R = 10, tr = SUM.tradeoff;
+  const xm = Math.max(...tr.map(r => r.unnecessary_manoeuvres)), ym = Math.max(...tr.map(r => r.missed_high_risk), base.missed_high_risk) + 5;
+  const x = v => L + v / xm * (W - L - R), y = v => T + (1 - v / ym) * (H - T - B);
+  let g = `<polyline fill="none" stroke="#eef1f6" stroke-width="1.5" points="${tr.map(r => `${x(r.unnecessary_manoeuvres)},${y(r.missed_high_risk)}`).join(" ")}"/>`;
+  g += `<rect x="${x(base.unnecessary_manoeuvres) - 5}" y="${y(base.missed_high_risk) - 5}" width="10" height="10" fill="#a9b3c7"/><text x="${x(base.unnecessary_manoeuvres) + 9}" y="${y(base.missed_high_risk) - 8}" fill="#a9b3c7" font-size="12">latest-risk rule</text>`;
+  g += `<circle cx="${x(row.unnecessary_manoeuvres)}" cy="${y(row.missed_high_risk)}" r="7" fill="#ffb547"/>`;
+  g += `<line x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" stroke="#2a3550"/><line x1="${L}" x2="${L}" y1="${T}" y2="${H - B}" stroke="#2a3550"/>`;
+  g += `<text x="${(L + W) / 2}" y="${H - 6}" fill="#a9b3c7" font-size="12" text-anchor="middle">unnecessary manoeuvres</text><text x="14" y="${(T + H - B) / 2}" fill="#a9b3c7" font-size="12" text-anchor="middle" transform="rotate(-90 14 ${(T + H - B) / 2})">missed high-risk events</text>`;
+  g += `<text x="${L - 6}" y="${y(0) + 4}" fill="#a9b3c7" font-size="12" text-anchor="end">0</text><text x="${L - 6}" y="${y(ym) + 12}" fill="#a9b3c7" font-size="12" text-anchor="end">${ym}</text><text x="${x(xm)}" y="${H - B + 16}" fill="#a9b3c7" font-size="12" text-anchor="end">${xm}</text>`;
+  $("#tradeChart").innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Trade-off curve: at this line KAKSHA misses ${row.missed_high_risk} high-risk events and recommends ${row.unnecessary_manoeuvres} unnecessary manoeuvres; the latest-risk rule misses ${base.missed_high_risk} and recommends ${base.unnecessary_manoeuvres}.">${g}</svg>`;
+}
+
+function renderCalib() {
+  const u = SUM.uncertainty[0];
+  $("#calib").innerHTML = `<table><caption class="sr">Calibration of KAKSHA's probabilities</caption><thead><tr><th scope="col">Probability given</th><th scope="col">Events</th><th scope="col">Mean probability</th><th scope="col">Share that ended high risk</th></tr></thead><tbody>` +
+    SUM.calibration.filter(c => c.events > 0).map(c => `<tr><td>${f(c.bin_low, 2)} – ${f(c.bin_high, 2)}</td><td>${c.events}</td><td>${f(c.mean_predicted, 3)}</td><td>${f(c.observed_high_risk, 3)}</td></tr>`).join("") +
+    `</tbody></table><p class="meta">Brier score ${f(u.brier, 4)} (latest-risk rule as a yes/no forecast: ${f(u.brier_latest_rule, 4)}). The 80 % range held the final risk for ${Math.round(u.coverage_all * 100)} % of all events but only ${Math.round(u.coverage_high_risk * 100)} % of high-risk ones: ranges are too narrow exactly where it matters, which is the next thing to fix.</p>`;
+}
+
+(async () => {
+  try {
+    [SUM, EVENTS] = await Promise.all([get("/api/summary"), get("/api/events")]);
+  } catch (e) { $("#detail").innerHTML = `<p class="meta">Could not load results. Run <code>python train.py</code>, then restart the server.</p>`; return; }
+  renderStrip(); renderList(); renderTrade(); renderCalib();
+  $("#filter").onchange = renderList;
+  $("#thr").oninput = renderTrade;
+  $("#list").onclick = e => { const b = e.target.closest("button"); if (b) show(Number(b.dataset.id)); };
+  $("#jump").onchange = e => show(Number(e.target.value));
+  // Demo event: 1573 (latest message -6.17, final -4.86). Falls back to any caught event after a retrain.
+  const caught = EVENTS.find(e => e.id === 1573 && e.kind.startsWith("caught")) || EVENTS.find(e => e.kind.startsWith("caught"));
+  const q = new URLSearchParams(location.search).get("event");
+  show(q ?? (caught ? caught.id : EVENTS[0].id));
+})();
+</script>
+</body>
+</html>

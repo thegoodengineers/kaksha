@@ -1,0 +1,7 @@
+protocol,method,events,high_risk_events,mse_hr,f2,L,missed_high_risk,recall_high_risk,unnecessary_manoeuvres,false_alarm_rate
+official,baseline: latest CDM risk,2167,150,0.5129,0.7391,0.6940,35,0.7667,63,0.0312
+shifted,baseline: latest CDM risk,2167,150,0.5129,0.7391,0.6940,35,0.7667,63,0.0312
+official,baseline: highest risk so far,2167,150,0.5596,0.5915,0.9460,24,0.8400,339,0.1681
+shifted,baseline: highest risk so far,2167,150,0.5596,0.5915,0.9460,24,0.8400,339,0.1681
+official,model,2167,150,0.6128,0.7216,0.8491,38,0.7467,64,0.0317
+shifted,model,2167,150,0.5176,0.7678,0.6741,23,0.8467,100,0.0496
