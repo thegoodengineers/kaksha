@@ -27,18 +27,28 @@ CANDIDATES = {
 }
 
 
+# Frozen from results/cv_selection_correction.csv (tune.py --select-correction): train 5-fold CV only.
+CORRECTION = {"clean-correction": dict(subset="latest>=-8 & last CDM<=2.5 d", alpha=1.0, lam=0.25,
+                                       demote_t=None, promote_t=None)}
+
+
+def predict(name, X, y, Xt):
+    if name in CORRECTION:
+        return tune.fit_predict_correction(X, y, Xt, CORRECTION[name])
+    return np.where(flags(name, X, y, Xt), np.maximum(Xt.last_risk.to_numpy(), k.HIGH), k.CLIP)
+
+
 def flags(name, X, y, Xt):
     return tune.flag_combo(X, y, Xt, **CANDIDATES[name])
 
 
 def main(name: str) -> None:
     X, y, Xt, yt, _ = T.prepare()
-    f = flags(name, X, y, Xt)
-    s = k.score(yt, np.where(f, np.maximum(Xt.last_risk.to_numpy(), k.HIGH), k.CLIP))
+    s = k.score(yt, predict(name, X, y, Xt))
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
-    label = "clean: chosen by train CV only" if name == "clean" else name
+    label = f"{name}: chosen by train CV only" if name.startswith("clean") else name
     row = {"date": datetime.date.today().isoformat(), "commit": commit, "candidate": label,
-           "config": str(CANDIDATES[name]), **{c: s[c] for c in ("L", "mse_hr", "f2", "missed_high_risk",
+           "config": str({**CANDIDATES, **CORRECTION}[name]), **{c: s[c] for c in ("L", "mse_hr", "f2", "missed_high_risk",
                                                                   "unnecessary_manoeuvres")}}
     pd.DataFrame([row]).to_csv(LOG, mode="a", header=not LOG.exists(), index=False, float_format="%.4f")
     print(row)
@@ -50,7 +60,7 @@ def bootstrap(name: str, n: int = 2000) -> None:
     """Paired bootstrap over test events of L(candidate) - L(latest rule), for an already-logged
     candidate. Re-uses the same frozen predictions; nothing is fitted or chosen here."""
     X, y, Xt, yt, _ = T.prepare()
-    ours = np.where(flags(name, X, y, Xt), np.maximum(Xt.last_risk.to_numpy(), k.HIGH), k.CLIP)
+    ours = predict(name, X, y, Xt)
     base = k.clip(Xt.last_risk.to_numpy())
     rng = np.random.default_rng(T.SEED)
     d = []
